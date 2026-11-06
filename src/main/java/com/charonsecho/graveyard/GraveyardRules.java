@@ -1,5 +1,6 @@
 package com.charonsecho.graveyard;
 
+import com.charonsecho.platform.NeoEvents;
 import com.charonsecho.CharonConfig;
 import com.charonsecho.CharonsEcho;
 import com.charonsecho.death.GhostState;
@@ -14,10 +15,6 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.UUID;
 
-import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents;
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
@@ -44,23 +41,23 @@ public final class GraveyardRules {
     private GraveyardRules() {}
 
     public static void register() {
-        ServerLifecycleEvents.SERVER_STARTING.register(server -> {
+        NeoEvents.serverStarting(server -> {
             MANAGED_MOBS.clear();
             legacyIndexNeeded = true;
         });
-        ServerEntityEvents.ENTITY_LOAD.register((entity, level) -> {
+        NeoEvents.entityLoad((entity, level) -> {
             if (level.dimension() == CharonsEcho.GRAVEYARD_DIM
                     && entity instanceof Mob mob && entity.entityTags().contains(War.MOB_MARKER)) {
                 MANAGED_MOBS.put(entity.getUUID(), mob);
             }
         });
-        ServerEntityEvents.ENTITY_UNLOAD.register((entity, level) ->
+        NeoEvents.entityUnload((entity, level) ->
                 MANAGED_MOBS.remove(entity.getUUID()));
 
         // The graveyard's one law of violence: the war may harm only itself.
         // Living players untouchable and harmless; civilians sacred; the
         // enlisted dead fight enemy factions only (War decides the matrix).
-        ServerLivingEntityEvents.ALLOW_DAMAGE.register((entity, source, amount) ->
+        NeoEvents.allowDamage((entity, source, amount) ->
                 entity.level().dimension() != CharonsEcho.GRAVEYARD_DIM
                         || War.allowDamage(entity, source, amount));
 
@@ -68,8 +65,8 @@ public final class GraveyardRules {
         // Gamemasters and rostered gravekeepers are exempt (permissions()
         // check works for the single-player host, unlike isOp()). The Studio
         // is builder-only ground too.
-        net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents.BEFORE.register(
-                (world, player, pos, state, blockEntity) -> {
+        NeoEvents.beforeBreak(
+                (world, player, pos, state) -> {
                     if (world.dimension() == CharonsEcho.GRAVEYARD_DIM) {
                         // The one thing the living may take from the dead's
                         // world: ripe Tollfruit (the Orchard handler collects it).
@@ -83,7 +80,7 @@ public final class GraveyardRules {
                     }
                     return true;
                 });
-        net.fabricmc.fabric.api.event.player.UseBlockCallback.EVENT.register((player, world, hand, hit) -> {
+        NeoEvents.useBlock((player, world, hand, hit) -> {
             if (world.dimension() != CharonsEcho.GRAVEYARD_DIM
                     && world.dimension() != CharonsEcho.STUDIO_DIM) {
                 return net.minecraft.world.InteractionResult.PASS;
@@ -139,9 +136,6 @@ public final class GraveyardRules {
             if (!(player.getItemInHand(hand).getItem() instanceof net.minecraft.world.item.BlockItem)) {
                 return net.minecraft.world.InteractionResult.PASS;
             }
-            // Client side can't know who's a builder — always forward so the
-            // SERVER decides (a client-side FAIL would swallow everyone's
-            // placements, admins included).
             if (!(player instanceof net.minecraft.server.level.ServerPlayer sp)) {
                 return net.minecraft.world.InteractionResult.PASS;
             }
@@ -153,7 +147,7 @@ public final class GraveyardRules {
         });
 
         // Pacify the Gravekeepers a few times a second.
-        ServerTickEvents.END_SERVER_TICK.register(GraveyardRules::tick);
+        NeoEvents.serverTick(GraveyardRules::tick);
     }
 
     public static boolean isGamemaster(net.minecraft.server.level.ServerPlayer player) {

@@ -1,15 +1,15 @@
 package com.charonsecho.npc;
 
+import com.charonsecho.platform.NeoEvents;
 import com.charonsecho.CharonConfig;
 import com.charonsecho.CharonsEcho;
 import com.charonsecho.graveyard.Church;
 import com.charonsecho.item.StygianItems;
 import com.charonsecho.orchard.Orchard;
 
-import eu.pb4.sgui.api.elements.GuiElementBuilder;
-import eu.pb4.sgui.api.gui.SimpleGui;
+import com.charonsecho.gui.MenuItem;
+import com.charonsecho.gui.ChestGui;
 
-import net.fabricmc.fabric.api.event.player.UseEntityCallback;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
@@ -23,14 +23,13 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.npc.wanderingtrader.WanderingTrader;
-import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 
 /**
  * The Broker — a wandering trader who stopped wandering a very long time ago.
  * He stands on the church plateau in Charon's Echo and sells exactly one
- * thing: Stygian Seeds, for emeralds. Right-click opens a small sgui shop
+ * thing: Stygian Seeds, for emeralds. Right-click opens a small shop menu
  * (vanilla + Bedrock friendly) instead of the vanilla merchant screen.
  */
 public final class Broker {
@@ -40,7 +39,7 @@ public final class Broker {
     private static boolean ensurePending;
 
     public static void register() {
-        UseEntityCallback.EVENT.register((player, world, hand, entity, hit) -> {
+        NeoEvents.useEntity((player, world, entity) -> {
             // ANY wandering trader in the land of the dead IS the Broker —
             // the graveyard has no natural spawns, so there is no ambiguity,
             // and stale clones from earlier boots answer correctly too.
@@ -56,7 +55,7 @@ public final class Broker {
         // server start finds nothing and every boot would spawn another clone.
         // The ensure runs a few seconds in and then REPEATS every 30s: clones
         // whose entities loaded late get swept on the next pass.
-        net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents.END_SERVER_TICK.register(server -> {
+        NeoEvents.serverTick(server -> {
             if (server.getTickCount() < 100) return;
             if (!ensurePending && server.getTickCount() % 600 != 0) return;
             ensurePending = false;
@@ -188,21 +187,21 @@ public final class Broker {
 
     private static void openShop(ServerPlayer player) {
         int price = CharonConfig.orchardSeedPrice;
-        SimpleGui gui = new SimpleGui(MenuType.GENERIC_9x3, player, false);
+        ChestGui gui = new ChestGui(player, 3);
         gui.setTitle(Component.literal("the Broker"));
 
         ItemStack display = StygianItems.seed(1);
-        gui.setSlot(13, GuiElementBuilder.from(display)
+        gui.setSlot(13, MenuItem.from(display)
                 .addLoreLine(Component.empty())
                 .addLoreLine(Component.literal("Price: " + price + " emeralds")
                         .withStyle(ChatFormatting.GREEN))
                 .addLoreLine(Component.literal("Click to buy.").withStyle(ChatFormatting.GRAY))
-                .setCallback((index, type, action, g) -> {
+                .setCallback(g -> {
                     if (buy(player, price)) {
                         g.close();
                     }
                 }));
-        gui.setSlot(4, new GuiElementBuilder(Items.EMERALD)
+        gui.setSlot(4, new MenuItem(Items.EMERALD)
                 .setName(Component.literal("He does not haggle.")
                         .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC)));
         gui.open();

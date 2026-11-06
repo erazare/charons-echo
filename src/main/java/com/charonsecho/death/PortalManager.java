@@ -1,5 +1,8 @@
 package com.charonsecho.death;
 
+import com.charonsecho.gui.ChestGui;
+import com.charonsecho.gui.MenuItem;
+import com.charonsecho.platform.NeoEvents;
 import com.charonsecho.CharonsEcho;
 import com.charonsecho.graveyard.Church;
 import com.charonsecho.graveyard.GraveyardPlots;
@@ -12,8 +15,6 @@ import java.util.UUID;
 import java.util.HashMap;
 import java.util.HashSet;
 
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
-import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -121,9 +122,9 @@ public final class PortalManager {
     private PortalManager() {}
 
     public static void register() {
-        ServerTickEvents.END_SERVER_TICK.register(PortalManager::tick);
-        ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
-            UUID id = handler.getPlayer().getUUID();
+        NeoEvents.serverTick(PortalManager::tick);
+        NeoEvents.playerQuit(player -> {
+            UUID id = player.getUUID();
             RETURN_PORTALS.remove(id);
             RETURN_RESOLVED.remove(id);
             DEATH_ARMED.remove(id);
@@ -306,20 +307,14 @@ public final class PortalManager {
         BlockPos gravePortal = GraveyardPlots.arrivalPos(grave.plotIndex).offset(0, 0, 2);
         ReturnPortal atGrave = new ReturnPortal(gravePortal, grave.dimension, grave.pos);
 
-        var gui = new eu.pb4.sgui.api.gui.SimpleGui(
-                net.minecraft.world.inventory.MenuType.GENERIC_9x3, player, false) {
+        var gui = new ChestGui(player, 3) {
             @Override
-            public void onManualClose() {
-                RETURN_PORTALS.putIfAbsent(player.getUUID(), atGrave);
-            }
-
-            @Override
-            public void onPlayerClose(boolean screenIsClosing) {
+            protected void onClose() {
                 RETURN_PORTALS.putIfAbsent(player.getUUID(), atGrave);
             }
         };
         gui.setTitle(Component.literal("Your echo is free"));
-        gui.setSlot(12, new eu.pb4.sgui.api.elements.GuiElementBuilder(
+        gui.setSlot(12, new MenuItem(
                 net.minecraft.world.item.Items.SOUL_LANTERN)
                 .setName(Component.literal("Open the portal home").withStyle(ChatFormatting.AQUA))
                 .addLoreLine(Component.literal("It rises beside your grave and")
@@ -327,19 +322,18 @@ public final class PortalManager {
                 .addLoreLine(Component.literal("returns you to where you fell.")
                         .withStyle(ChatFormatting.GRAY))
                 .glow()
-                .setCallback((i, t, a, g) -> {
+                .setCallback(g -> {
                     RETURN_PORTALS.put(player.getUUID(), atGrave);
                     g.close();
-                })
-                .build());
-        gui.setSlot(14, new eu.pb4.sgui.api.elements.GuiElementBuilder(
+                }));
+        gui.setSlot(14, new MenuItem(
                 net.minecraft.world.item.Items.BELL)
                 .setName(Component.literal("Walk to the church").withStyle(ChatFormatting.GOLD))
                 .addLoreLine(Component.literal("Pay your respects on the plateau —")
                         .withStyle(ChatFormatting.GRAY))
                 .addLoreLine(Component.literal("the portal home will wait there.")
                         .withStyle(ChatFormatting.GRAY))
-                .setCallback((i, t, a, g) -> {
+                .setCallback(g -> {
                     ServerLevel gy = (ServerLevel) player.level();
                     BlockPos at = Church.arrivalPoint();
                     gy.getChunk(at.getX() >> 4, at.getZ() >> 4);
@@ -348,8 +342,7 @@ public final class PortalManager {
                     RETURN_PORTALS.put(player.getUUID(),
                             new ReturnPortal(at.offset(-4, 0, 0), grave.dimension, grave.pos));
                     g.close();
-                })
-                .build());
+                }));
         gui.open();
     }
 

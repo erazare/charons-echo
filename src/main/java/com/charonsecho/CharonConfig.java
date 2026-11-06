@@ -1,5 +1,6 @@
 package com.charonsecho;
 
+import net.neoforged.fml.loading.FMLPaths;
 import com.charonsecho.gates.SoulGates;
 import com.charonsecho.war.WarMarks;
 
@@ -9,7 +10,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Properties;
 
-import net.fabricmc.loader.api.FabricLoader;
 
 /**
  * Live settings — config/charons-echo.properties. Written with defaults on
@@ -96,7 +96,7 @@ public final class CharonConfig {
     private CharonConfig() {}
 
     public static void load() {
-        Path file = FabricLoader.getInstance().getConfigDir().resolve("charons-echo.properties");
+        Path file = FMLPaths.CONFIGDIR.get().resolve("charons-echo.properties");
         Properties p = new Properties();
         try {
             if (Files.exists(file)) {

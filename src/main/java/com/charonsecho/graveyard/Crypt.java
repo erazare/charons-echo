@@ -1,5 +1,6 @@
 package com.charonsecho.graveyard;
 
+import com.charonsecho.platform.NeoEvents;
 import com.charonsecho.CharonsEcho;
 import com.charonsecho.CharonStorage;
 import com.charonsecho.death.GraveManager;
@@ -12,7 +13,6 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 
-import net.fabricmc.fabric.api.event.player.UseBlockCallback;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
@@ -59,7 +59,7 @@ public final class Crypt {
     public static void register() {
         // The shelves keep their own census: refreshed every minute (which
         // also rolls the week over at midnight) and on every burial.
-        net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents.END_SERVER_TICK.register(server -> {
+        NeoEvents.serverTick(server -> {
             if (built && server.getTickCount() % 1200 == 0) {
                 refreshShelves(server);
             }
@@ -67,7 +67,7 @@ public final class Crypt {
         // Day-shelves: the ONE interactable in the crypt. Server decides;
         // client forwards (the house rule). SUCCESS also stops vanilla
         // chiseled-bookshelf slot fiddling.
-        UseBlockCallback.EVENT.register((player, world, hand, hit) -> {
+        NeoEvents.useBlock((player, world, hand, hit) -> {
             if (world.dimension() != CharonsEcho.GRAVEYARD_DIM || !built) {
                 return InteractionResult.PASS;
             }

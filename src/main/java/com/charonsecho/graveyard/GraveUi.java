@@ -10,9 +10,9 @@ import java.util.Date;
 import java.util.List;
 import java.util.Set;
 
-import eu.pb4.sgui.api.elements.GuiElementBuilder;
-import eu.pb4.sgui.api.gui.AnvilInputGui;
-import eu.pb4.sgui.api.gui.SimpleGui;
+import com.charonsecho.gui.MenuItem;
+import com.charonsecho.gui.NameInputMenu;
+import com.charonsecho.gui.ChestGui;
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
@@ -23,7 +23,6 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.entity.Relative;
-import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.component.ResolvableProfile;
@@ -40,23 +39,23 @@ public final class GraveUi {
     private GraveUi() {}
 
     /** A memorial entry for any list gui. */
-    public static GuiElementBuilder entry(ServerPlayer viewer, GraveManager.Grave grave) {
+    public static MenuItem entry(ServerPlayer viewer, GraveManager.Grave grave) {
         return entry(viewer, grave, false);
     }
 
     /** A memorial entry; the crowned form is the Death of the Week. */
-    public static GuiElementBuilder entry(ServerPlayer viewer, GraveManager.Grave grave,
+    public static MenuItem entry(ServerPlayer viewer, GraveManager.Grave grave,
             boolean crowned) {
-        GuiElementBuilder b;
+        MenuItem b;
         if (crowned) {
-            b = new GuiElementBuilder(Items.WITHER_ROSE)
+            b = new MenuItem(Items.WITHER_ROSE)
                     .setName(Component.literal("Death of the Week: " + grave.ownerName)
                             .withStyle(ChatFormatting.GOLD))
                     .glow();
         } else {
             ItemStack head = new ItemStack(Items.PLAYER_HEAD);
             head.set(DataComponents.PROFILE, ResolvableProfile.createUnresolved(grave.owner));
-            b = GuiElementBuilder.from(head)
+            b = MenuItem.from(head)
                     .setName(Component.literal(grave.ownerName)
                             .withStyle(grave.claimed ? ChatFormatting.GRAY : ChatFormatting.WHITE));
         }
@@ -86,7 +85,7 @@ public final class GraveUi {
         }
         b.addLoreLine(Component.literal("Click to visit their memorial.")
                 .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
-        b.setCallback((i, t, a, g) -> openMemorial(viewer, grave));
+        b.setCallback(g -> openMemorial(viewer, grave));
         return b;
     }
 
@@ -113,57 +112,52 @@ public final class GraveUi {
         final int p = Math.min(Math.max(page, 0), pages - 1);
         final String q = search == null || search.isBlank() ? null : search;
 
-        SimpleGui gui = new SimpleGui(MenuType.GENERIC_9x6, viewer, false);
+        ChestGui gui = new ChestGui(viewer, 6);
         gui.setTitle(Component.literal(pages > 1
                 ? title + " (" + (p + 1) + "/" + pages + ")" : title));
         int start = p * PAGE_SIZE;
         for (int i = start; i < Math.min(start + PAGE_SIZE, shown.size()); i++) {
             GraveManager.Grave g = shown.get(i);
-            gui.setSlot(i - start, entry(viewer, g, g == crowned).build());
+            gui.setSlot(i - start, entry(viewer, g, g == crowned));
         }
         if (shown.isEmpty()) {
-            gui.setSlot(22, new GuiElementBuilder(Items.BONE)
+            gui.setSlot(22, new MenuItem(Items.BONE)
                     .setName(Component.literal(q == null ? emptyText
-                            : "No soul bears that name.").withStyle(ChatFormatting.GRAY))
-                    .build());
+                            : "No soul bears that name.").withStyle(ChatFormatting.GRAY)));
         }
 
         if (p > 0) {
-            gui.setSlot(45, new GuiElementBuilder(Items.ARROW)
+            gui.setSlot(45, new MenuItem(Items.ARROW)
                     .setName(Component.literal("Previous page").withStyle(ChatFormatting.WHITE))
-                    .setCallback((i, t, a, g) ->
-                            openList(viewer, title, graves, crowned, emptyText, p - 1, q))
-                    .build());
+                    .setCallback(g ->
+                            openList(viewer, title, graves, crowned, emptyText, p - 1, q)));
         }
-        GuiElementBuilder seek = new GuiElementBuilder(Items.SPYGLASS)
+        MenuItem seek = new MenuItem(Items.SPYGLASS)
                 .setName(Component.literal("Seek a name").withStyle(ChatFormatting.AQUA));
         if (q != null) {
             seek.addLoreLine(Component.literal("Seeking: \"" + q + "\"")
                     .withStyle(ChatFormatting.GRAY));
         }
-        seek.setCallback((i, t, a, g) ->
+        seek.setCallback(g ->
                 openSearch(viewer, title, graves, crowned, emptyText));
-        gui.setSlot(47, seek.build());
+        gui.setSlot(47, seek);
         if (q != null) {
-            gui.setSlot(48, new GuiElementBuilder(Items.BARRIER)
+            gui.setSlot(48, new MenuItem(Items.BARRIER)
                     .setName(Component.literal("Show every name").withStyle(ChatFormatting.RED))
-                    .setCallback((i, t, a, g) ->
-                            openList(viewer, title, graves, crowned, emptyText, 0, null))
-                    .build());
+                    .setCallback(g ->
+                            openList(viewer, title, graves, crowned, emptyText, 0, null)));
         }
-        gui.setSlot(49, new GuiElementBuilder(Items.PAPER)
+        gui.setSlot(49, new MenuItem(Items.PAPER)
                 .setName(Component.literal("Page " + (p + 1) + " of " + pages)
                         .withStyle(ChatFormatting.WHITE))
                 .addLoreLine(Component.literal(shown.size()
                         + (shown.size() == 1 ? " soul" : " souls"))
-                        .withStyle(ChatFormatting.DARK_GRAY))
-                .build());
+                        .withStyle(ChatFormatting.DARK_GRAY)));
         if (p < pages - 1) {
-            gui.setSlot(53, new GuiElementBuilder(Items.ARROW)
+            gui.setSlot(53, new MenuItem(Items.ARROW)
                     .setName(Component.literal("Next page").withStyle(ChatFormatting.WHITE))
-                    .setCallback((i, t, a, g) ->
-                            openList(viewer, title, graves, crowned, emptyText, p + 1, q))
-                    .build());
+                    .setCallback(g ->
+                            openList(viewer, title, graves, crowned, emptyText, p + 1, q)));
         }
         gui.open();
     }
@@ -177,36 +171,27 @@ public final class GraveUi {
     /** The spyglass: an anvil to type a name into, then back to the roll. */
     private static void openSearch(ServerPlayer viewer, String title,
             List<GraveManager.Grave> graves, GraveManager.Grave crowned, String emptyText) {
-        AnvilInputGui anvil = new AnvilInputGui(viewer, false);
-        anvil.setTitle(Component.literal("Whom do you seek?"));
-        anvil.setDefaultInputValue("");
-        anvil.setSlot(2, new GuiElementBuilder(Items.SPYGLASS)
+        var seek = new MenuItem(Items.SPYGLASS)
                 .setName(Component.literal("Seek").withStyle(ChatFormatting.AQUA))
-                .addLoreLine(Component.literal("Type a name, then click.")
-                        .withStyle(ChatFormatting.DARK_GRAY))
-                .setCallback((i, t, a, g) -> {
-                    String typed = anvil.getInput();
-                    openList(viewer, title, graves, crowned, emptyText, 0,
-                            typed == null ? null : typed.trim());
-                })
-                .build());
-        anvil.open();
+                .addLoreLine(Component.literal("Type a name, then click.").withStyle(ChatFormatting.DARK_GRAY));
+        NameInputMenu.open(viewer, Component.literal("Whom do you seek?"), seek.icon(),
+                input -> openList(viewer, title, graves, crowned, emptyText, 0, input.trim()));
     }
 
     /** The memorial: read the story, or walk to the grave the short way. */
     private static void openMemorial(ServerPlayer viewer, GraveManager.Grave grave) {
-        SimpleGui gui = new SimpleGui(MenuType.GENERIC_9x3, viewer, false);
+        ChestGui gui = new ChestGui(viewer, 3);
         gui.setTitle(Component.literal(grave.ownerName));
         if (grave.book != null) {
-            gui.setSlot(11, new GuiElementBuilder(Items.WRITTEN_BOOK)
+            gui.setSlot(11, new MenuItem(Items.WRITTEN_BOOK)
                     .setName(Component.literal("Read their story").withStyle(ChatFormatting.DARK_AQUA))
                     .glow()
-                    .setCallback((i, t, a, g) -> {
+                    .setCallback(g -> {
                         g.close();
                         GraveBooks.open(viewer, grave);
                     }));
         } else {
-            gui.setSlot(11, new GuiElementBuilder(Items.BOOK)
+            gui.setSlot(11, new MenuItem(Items.BOOK)
                     .setName(Component.literal("They left no story.")
                             .withStyle(ChatFormatting.DARK_GRAY)));
         }
@@ -214,11 +199,11 @@ public final class GraveUi {
                 && viewer.level().dimension() == CharonsEcho.GRAVEYARD_DIM
                 && !GhostState.isGhost(viewer.getUUID());
         if (mayVisit) {
-            gui.setSlot(15, new GuiElementBuilder(Items.RECOVERY_COMPASS)
+            gui.setSlot(15, new MenuItem(Items.RECOVERY_COMPASS)
                     .setName(Component.literal("Visit their grave").withStyle(ChatFormatting.GOLD))
                     .addLoreLine(Component.literal("Field " + (grave.plotIndex / 36 + 1))
                             .withStyle(ChatFormatting.GRAY))
-                    .setCallback((i, t, a, g) -> {
+                    .setCallback(g -> {
                         g.close();
                         ServerLevel graveyard = (ServerLevel) viewer.level();
                         BlockPos at = GraveyardPlots.arrivalPos(grave.plotIndex);
@@ -229,7 +214,7 @@ public final class GraveUi {
                                 SoundSource.AMBIENT, 0.7f, 0.9f);
                     }));
         } else if (grave.plotIndex >= 0) {
-            gui.setSlot(15, new GuiElementBuilder(Items.COMPASS)
+            gui.setSlot(15, new MenuItem(Items.COMPASS)
                     .setName(Component.literal("Their grave lies in Charon's Echo")
                             .withStyle(ChatFormatting.DARK_GRAY))
                     .addLoreLine(Component.literal("Only the living may walk there,")

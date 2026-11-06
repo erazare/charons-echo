@@ -5,7 +5,12 @@ import com.charonsecho.death.GraveManager;
 
 import java.util.List;
 
-import eu.pb4.sgui.api.gui.BookGui;
+import net.minecraft.world.SimpleContainer;
+import net.minecraft.world.SimpleMenuProvider;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.inventory.ContainerInput;
+import net.minecraft.world.inventory.LecternMenu;
+import net.minecraft.world.inventory.SimpleContainerData;
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.component.DataComponents;
@@ -69,6 +74,17 @@ public final class GraveBooks {
         if (grave.book == null) return;
         ItemStack book = new ItemStack(Items.WRITTEN_BOOK);
         book.set(DataComponents.WRITTEN_BOOK_CONTENT, grave.book);
-        new BookGui(player, book).open();
+        player.openMenu(new SimpleMenuProvider((id, inventory, viewer) ->
+                new LecternMenu(id, new SimpleContainer(book), new SimpleContainerData(1)) {
+                    @Override
+                    public void clicked(int slot, int button, ContainerInput input, Player viewer) {
+                        // The book slot is display-only, including for modified clients.
+                    }
+
+                    @Override
+                    public boolean clickMenuButton(Player viewer, int button) {
+                        return button != 3 && super.clickMenuButton(viewer, button); // 3 takes the book.
+                    }
+                }, Component.empty()));
     }
 }

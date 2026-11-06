@@ -1,5 +1,6 @@
 package com.charonsecho.death;
 
+import com.charonsecho.platform.NeoEvents;
 import com.charonsecho.CharonsEcho;
 import com.charonsecho.CharonStorage;
 import com.charonsecho.graveyard.GraveyardPlots;
@@ -17,7 +18,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
@@ -93,7 +93,7 @@ public final class GraveManager {
     private GraveManager() {}
 
     public static void register() {
-        ServerTickEvents.END_SERVER_TICK.register(GraveManager::tick);
+        NeoEvents.serverTick(GraveManager::tick);
     }
 
     private static void tick(MinecraftServer srv) {

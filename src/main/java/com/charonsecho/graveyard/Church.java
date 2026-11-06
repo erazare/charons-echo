@@ -1,5 +1,6 @@
 package com.charonsecho.graveyard;
 
+import com.charonsecho.platform.NeoEvents;
 import com.charonsecho.CharonCommands;
 import com.charonsecho.CharonsEcho;
 import com.charonsecho.CharonStorage;
@@ -46,7 +47,7 @@ public final class Church {
 
     /** The ledger lectern: click it, read the Book of the Dead. */
     public static void register() {
-        net.fabricmc.fabric.api.event.player.UseBlockCallback.EVENT.register(
+        NeoEvents.useBlock(
                 (player, world, hand, hit) -> {
             if (lectern == null || !hit.getBlockPos().equals(lectern)
                     || world.dimension() != CharonsEcho.GRAVEYARD_DIM) {

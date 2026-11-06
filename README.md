@@ -31,7 +31,7 @@ Built for the CurseForge **Minecraft ModJam 2026 — "Echoes of the Past."**
 - **Server-side only** — vanilla Java clients and Bedrock players (via Geyser)
   join with no client mod and no resource pack.
 - **Local singleplayer is supported** — install the same jar in the local
-  Fabric profile. Minecraft's integrated server runs the mod; no separate
+  NeoForge profile. Minecraft's integrated server runs the mod; no separate
   client-side companion is involved.
 - **A unique graveyard per world** — monochrome hills seeded from your world:
   pale moss, gravel scree, sculk vales, a winding river, hand-built withered
@@ -86,15 +86,16 @@ settled ground; the front marches on.
 - **More of everything** — headstones, trees, gates, and whole style families
   (sets) grow over time; server builders can author their own in the Studio
   today.
-- **A Minecraft 26.1.2 build** and formal Bedrock/Geyser verification.
+- Formal Bedrock/Geyser verification.
 
 ## Requirements
 
-- Charon's Echo **1.3.2**
-- Minecraft **26.3** (Fabric) — a **26.2** build is also provided
-  for servers not ready to move
-- [Fabric API](https://modrinth.com/mod/fabric-api) — that's it;
-  [sgui](https://github.com/Patbox/sgui) is bundled inside the jar
+- Minecraft **26.3** with Java **25**
+- NeoForge **26.3.0.101** or later in the **26.3** series
+
+Install the NeoForge JAR in the server's `mods` folder, or in a NeoForge profile
+for local singleplayer. To build from source with JDK 25, run `./gradlew build`
+(`gradlew.bat build` on Windows). The JAR is in `build/libs`.
 
 Every timer, price, cap, and war knob lives in
 `config/charons-echo.properties`, written as a documented manual. Set

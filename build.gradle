@@ -1,31 +1,38 @@
 plugins {
-    id 'net.fabricmc.fabric-loom' version '1.17.12'
+    id 'java'
+    id 'net.neoforged.moddev' version '2.0.148'
 }
 
-// Jar is stamped with the Minecraft version, e.g. charons-echo-1.1.1+26.2.jar
 version = "${project.mod_version}+${project.minecraft_version}"
 group = 'com.charonsecho'
 
 base {
-    archivesName = 'charons-echo'
+    archivesName = 'charons-echo-neoforge'
+}
+
+java.toolchain.languageVersion = JavaLanguageVersion.of(25)
+
+neoForge {
+    version = project.neo_version
+    addModdingDependenciesTo sourceSets.test
+    runs {
+        server {
+            server()
+            programArgument '--nogui'
+        }
+    }
+    mods {
+        charons_echo {
+            sourceSet sourceSets.main
+        }
+    }
 }
 
 repositories {
-    maven { url = 'https://maven.nucleoid.xyz' }   // sgui (Patbox)
+    mavenCentral()
 }
 
 dependencies {
-    // Minecraft 26.x ships unobfuscated with official names — no 'mappings' line needed.
-    minecraft "com.mojang:minecraft:${project.minecraft_version}"
-
-    implementation "net.fabricmc:fabric-loader:${project.loader_version}"
-    implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
-
-    // Server-side GUIs (death screen, Book of the Dead, epitaph input, altar shop).
-    // sgui is bundled (jar-in-jar): users install ONE file + Fabric API.
-    implementation "eu.pb4:sgui:${project.sgui_version}"
-    include "eu.pb4:sgui:${project.sgui_version}"
-
     testImplementation 'org.junit.jupiter:junit-jupiter:5.11.4'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.11.4'
 }
@@ -39,20 +46,16 @@ test {
 }
 
 processResources {
-    inputs.property "version", project.version
-    inputs.property "minecraft_dep", project.minecraft_dep
-    filesMatching("fabric.mod.json") {
-        expand "version": project.version, "minecraft_dep": project.minecraft_dep
+    def metadata = [version: project.version, minecraft_version: project.minecraft_version,
+                    neo_version: project.neo_version]
+    inputs.properties(metadata)
+    filesMatching('META-INF/neoforge.mods.toml') {
+        expand(metadata)
     }
 }
 
 tasks.withType(JavaCompile).configureEach {
-    it.options.encoding = 'UTF-8'
-    it.options.release = 25
-    it.options.compilerArgs.add('-Xlint:deprecation')
-}
-
-java {
-    sourceCompatibility = JavaVersion.VERSION_25
-    targetCompatibility = JavaVersion.VERSION_25
+    options.encoding = 'UTF-8'
+    options.release = 25
+    options.compilerArgs.add('-Xlint:deprecation')
 }

@@ -1,5 +1,6 @@
 package com.charonsecho.war;
 
+import com.charonsecho.platform.NeoEvents;
 import com.charonsecho.CharonConfig;
 import com.charonsecho.CharonsEcho;
 import com.charonsecho.CharonStorage;
@@ -19,10 +20,9 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-import eu.pb4.sgui.api.elements.GuiElementBuilder;
-import eu.pb4.sgui.api.gui.SimpleGui;
+import com.charonsecho.gui.MenuItem;
+import com.charonsecho.gui.ChestGui;
 
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.component.DataComponents;
@@ -44,7 +44,6 @@ import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.Relative;
-import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -86,7 +85,7 @@ public final class War {
     private War() {}
 
     public static void register() {
-        ServerTickEvents.END_SERVER_TICK.register(War::tick);
+        NeoEvents.serverTick(War::tick);
     }
 
     // ---------------------------------------------------------------- factions
@@ -480,17 +479,17 @@ public final class War {
         // Payment in kind is on the table only where a Vault stands to hold it.
         ItemStack kindTake = Vault.active() ? Vault.mostValuable(grave.items) : null;
 
-        SimpleGui gui = new SimpleGui(MenuType.GENERIC_9x3, player, false);
+        ChestGui gui = new ChestGui(player, 3);
         gui.setTitle(Component.literal("Charon waits"));
-        java.util.List<GuiElementBuilder> choices = new java.util.ArrayList<>();
+        java.util.List<MenuItem> choices = new java.util.ArrayList<>();
 
-        GuiElementBuilder fare = new GuiElementBuilder(Items.ECHO_SHARD)
+        MenuItem fare = new MenuItem(Items.ECHO_SHARD)
                 .setName(Component.literal("Pay the fare").withStyle(ChatFormatting.DARK_AQUA))
                 .addLoreLine(Component.literal(hasObol
                         ? "One Charon's Obol." : "You carry no obol.")
                         .withStyle(hasObol ? ChatFormatting.GRAY : ChatFormatting.DARK_GRAY));
         if (hasObol) {
-            fare.glow().setCallback((i, t, a, g) -> {
+            fare.glow().setCallback(g -> {
                 if (PortalManager.consumeObol(player)) {
                     g.close();
                     player.sendSystemMessage(Component.literal("Charon accepts your fare.")
@@ -501,7 +500,7 @@ public final class War {
         }
         choices.add(fare);
 
-        GuiElementBuilder toll = new GuiElementBuilder(Items.EXPERIENCE_BOTTLE)
+        MenuItem toll = new MenuItem(Items.EXPERIENCE_BOTTLE)
                 .setName(Component.literal("Pay the toll").withStyle(ChatFormatting.GREEN));
         if (tollTake < 1 && kindTake != null) {
             // A memory worth nothing is no payment while there are goods to
@@ -514,7 +513,7 @@ public final class War {
             toll.addLoreLine(Component.literal("Charon takes " + CharonConfig.tollXpPercent
                             + "% of your memory (" + tollTake + " of " + grave.xpLevels + " levels).")
                             .withStyle(ChatFormatting.GRAY))
-                    .setCallback((i, t, a, g) -> {
+                    .setCallback(g -> {
                         grave.xpLevels -= tollTake;
                         GraveManager.save();
                         g.close();
@@ -528,7 +527,7 @@ public final class War {
 
         if (kindTake != null) {
             final ItemStack taken = kindTake;
-            choices.add(GuiElementBuilder.from(kindTake.copy())
+            choices.add(MenuItem.from(kindTake.copy())
                     .setName(Component.literal("Pay in kind").withStyle(ChatFormatting.GOLD))
                     .addLoreLine(Component.literal("Charon takes "
                             + taken.getHoverName().getString() + " to his Vault.")
@@ -538,7 +537,7 @@ public final class War {
                     .addLoreLine(Component.literal("Ransom it later from the Vault Keeper.")
                             .withStyle(ChatFormatting.DARK_GRAY))
                     .hideDefaultTooltip()
-                    .setCallback((i, t, a, g) -> {
+                    .setCallback(g -> {
                         if (!Vault.toll(player, grave, taken)) return; // goods changed under the click
                         g.close();
                         PortalManager.resurrect(player, grave, clicked);
@@ -547,22 +546,22 @@ public final class War {
 
         // The oath is only offered while the war burns (war=1).
         if (CharonConfig.war != 0) {
-            choices.add(new GuiElementBuilder(Items.IRON_SWORD)
+            choices.add(new MenuItem(Items.IRON_SWORD)
                     .setName(Component.literal("Take the oath: KEEPERS").withStyle(ChatFormatting.AQUA))
                     .addLoreLine(Component.literal("Serve the yard. Hold the graves.")
                             .withStyle(ChatFormatting.GRAY))
                     .addLoreLine(Component.literal("Serve your time, and passage is free.")
                             .withStyle(ChatFormatting.DARK_GRAY))
                     .hideDefaultTooltip()
-                    .setCallback((i, t, a, g) -> { g.close(); enlist(player, Faction.KEEPERS); }));
-            choices.add(new GuiElementBuilder(Items.BOW)
+                    .setCallback(g -> { g.close(); enlist(player, Faction.KEEPERS); }));
+            choices.add(new MenuItem(Items.BOW)
                     .setName(Component.literal("Take the oath: RESTLESS").withStyle(ChatFormatting.RED))
                     .addLoreLine(Component.literal("The dead deserve better. Tear it down.")
                             .withStyle(ChatFormatting.GRAY))
                     .addLoreLine(Component.literal("Serve your time, and passage is free.")
                             .withStyle(ChatFormatting.DARK_GRAY))
                     .hideDefaultTooltip()
-                    .setCallback((i, t, a, g) -> { g.close(); enlist(player, Faction.RESTLESS); }));
+                    .setCallback(g -> { g.close(); enlist(player, Faction.RESTLESS); }));
         }
 
         // Centered across the middle row, however many ways Charon offers.

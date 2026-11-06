@@ -1,5 +1,6 @@
 package com.charonsecho.death;
 
+import com.charonsecho.platform.NeoEvents;
 import com.charonsecho.CharonConfig;
 import com.charonsecho.CharonsEcho;
 import com.charonsecho.item.CharonObol;
@@ -8,11 +9,9 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.HashMap;
 
-import eu.pb4.sgui.api.gui.SimpleGui;
-import eu.pb4.sgui.api.elements.GuiElementBuilder;
+import com.charonsecho.gui.ChestGui;
+import com.charonsecho.gui.MenuItem;
 
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
-import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.chat.Component;
@@ -20,13 +19,12 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.item.ItemEntity;
-import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.phys.AABB;
 
 /**
  * The wake: for up to 60 seconds after death the body lies in state. The dead
- * player sees the death screen (sgui) with a "Rise as a Ghost" button; anyone
+ * player sees the death menu with a "Rise as a Ghost" button; anyone
  * may drop an Echo Shard onto the body to pay Charon's fare before the ghost
  * rises. Rising happens on button click, on closing the screen, on timeout,
  * or on disconnect — whichever comes first.
@@ -44,10 +42,9 @@ public final class DeathWake {
     private DeathWake() {}
 
     public static void register() {
-        ServerTickEvents.END_SERVER_TICK.register(DeathWake::tick);
-        ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
+        NeoEvents.serverTick(DeathWake::tick);
+        NeoEvents.playerQuit(player -> {
             // Never leave a wake unresolved — the ghost must exist before the save.
-            ServerPlayer player = handler.getPlayer();
             if (WAKES.containsKey(player.getUUID())) {
                 rise(player);
             }
@@ -61,43 +58,35 @@ public final class DeathWake {
     }
 
     private static void openGui(ServerPlayer player, GraveManager.Grave grave) {
-        SimpleGui gui = new SimpleGui(MenuType.GENERIC_9x3, player, false) {
+        ChestGui gui = new ChestGui(player, 3) {
             @Override
-            public void onManualClose() {
-                rise(player);
-            }
-
-            @Override
-            public void onPlayerClose(boolean screenIsClosing) {
+            protected void onClose() {
                 rise(player);
             }
         };
         gui.setTitle(Component.literal("You have died"));
-        gui.setSlot(11, new GuiElementBuilder(Items.SKELETON_SKULL)
+        gui.setSlot(11, new MenuItem(Items.SKELETON_SKULL)
                 .setName(Component.literal(grave.causeLine).withStyle(ChatFormatting.GRAY))
                 .addLoreLine(Component.literal("Charon has taken your possessions")
                         .withStyle(ChatFormatting.DARK_PURPLE))
                 .addLoreLine(Component.literal("to the graveyard.")
-                        .withStyle(ChatFormatting.DARK_PURPLE))
-                .build());
-        gui.setSlot(13, new GuiElementBuilder(Items.SOUL_LANTERN)
+                        .withStyle(ChatFormatting.DARK_PURPLE)));
+        gui.setSlot(13, new MenuItem(Items.SOUL_LANTERN)
                 .setName(Component.literal("Rise as a Ghost").withStyle(ChatFormatting.AQUA))
                 .addLoreLine(Component.literal("A soul-fire portal waits beside")
                         .withStyle(ChatFormatting.GRAY))
                 .addLoreLine(Component.literal("your body. Step through it.")
                         .withStyle(ChatFormatting.GRAY))
                 .glow()
-                .setCallback((index, type, action, g) -> g.close())
-                .build());
-        gui.setSlot(15, new GuiElementBuilder(Items.ECHO_SHARD)
+                .setCallback(g -> g.close()));
+        gui.setSlot(15, new MenuItem(Items.ECHO_SHARD)
                 .setName(Component.literal("Charon's Fare").withStyle(ChatFormatting.DARK_AQUA))
                 .addLoreLine(Component.literal("While your body lies here, anyone")
                         .withStyle(ChatFormatting.GRAY))
                 .addLoreLine(Component.literal("may drop a Charon's Obol on it")
                         .withStyle(ChatFormatting.GRAY))
                 .addLoreLine(Component.literal("to pay your passage.")
-                        .withStyle(ChatFormatting.GRAY))
-                .build());
+                        .withStyle(ChatFormatting.GRAY)));
         gui.open();
     }
 

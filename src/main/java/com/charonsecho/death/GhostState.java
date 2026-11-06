@@ -1,5 +1,6 @@
 package com.charonsecho.death;
 
+import com.charonsecho.platform.NeoEvents;
 import com.charonsecho.CharonConfig;
 import com.charonsecho.CharonsEcho;
 import com.charonsecho.CharonStorage;
@@ -12,13 +13,6 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
-import net.fabricmc.fabric.api.event.player.AttackBlockCallback;
-import net.fabricmc.fabric.api.event.player.AttackEntityCallback;
-import net.fabricmc.fabric.api.event.player.UseBlockCallback;
-import net.fabricmc.fabric.api.event.player.UseEntityCallback;
-import net.fabricmc.fabric.api.event.player.UseItemCallback;
-import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleTypes;
@@ -71,35 +65,34 @@ public final class GhostState {
     private GhostState() {}
 
     public static void register() {
-        ServerTickEvents.END_SERVER_TICK.register(GhostState::tick);
+        NeoEvents.serverTick(GhostState::tick);
 
-        // Ghosts touch nothing — except their own headstone. On the client side
-        // (single-player) return SUCCESS so the click is FORWARDED to the
-        // server, where the real decision happens — a client-side FAIL would
-        // swallow the click before the server ever saw it.
-        UseBlockCallback.EVENT.register((player, world, hand, hit) -> {
+        // The server lets ghosts touch only their own headstone.
+        NeoEvents.useBlock((player, world, hand, hit) -> {
             if (!isGhost(player.getUUID())) return InteractionResult.PASS;
             if (!(player instanceof ServerPlayer sp)) return InteractionResult.SUCCESS;
             return PortalManager.tryReclaim(sp, hit.getBlockPos())
                     ? InteractionResult.SUCCESS : InteractionResult.FAIL;
         });
         // Enlisted dead are SOLDIERS: their hands work again — for the war.
-        UseItemCallback.EVENT.register((player, world, hand) ->
+        NeoEvents.useItem((player, world, hand) ->
                 isGhost(player.getUUID()) && !War.isActive(player.getUUID())
                         ? InteractionResult.FAIL : InteractionResult.PASS);
-        AttackBlockCallback.EVENT.register((player, world, hand, pos, dir) ->
-                isGhost(player.getUUID()) ? InteractionResult.FAIL : InteractionResult.PASS);
-        AttackEntityCallback.EVENT.register((player, world, hand, entity, hit) ->
-                isGhost(player.getUUID()) && !War.isActive(player.getUUID())
-                        ? InteractionResult.FAIL : InteractionResult.PASS);
-        UseEntityCallback.EVENT.register((player, world, hand, entity, hit) ->
+        NeoEvents.attackBlock(event -> {
+            if (isGhost(event.getEntity().getUUID())) event.setCanceled(true);
+        });
+        NeoEvents.attackEntity(event -> {
+            UUID id = event.getEntity().getUUID();
+            if (isGhost(id) && !War.isActive(id)) event.setCanceled(true);
+        });
+        NeoEvents.useEntity((player, world, entity) ->
                 isGhost(player.getUUID()) && !War.isActive(player.getUUID())
                         ? InteractionResult.FAIL : InteractionResult.PASS);
 
         // Rejoining ghosts stay ghosts.
-        ServerPlayConnectionEvents.JOIN.register((handler, sender, srv) -> {
-            if (isGhost(handler.getPlayer().getUUID())) {
-                applyEffects(handler.getPlayer());
+        NeoEvents.playerJoin(player -> {
+            if (isGhost(player.getUUID())) {
+                applyEffects(player);
             }
         });
     }

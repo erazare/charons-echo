@@ -1,11 +1,11 @@
 package com.charonsecho.item;
 
+import com.charonsecho.platform.NeoEvents;
 import com.charonsecho.CharonsEcho;
 
 import java.lang.reflect.Field;
 import java.util.List;
 
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
@@ -36,8 +36,8 @@ public final class ObolRecipe {
     private ObolRecipe() {}
 
     public static void register() {
-        ServerLifecycleEvents.SERVER_STARTED.register(ObolRecipe::inject);
-        ServerLifecycleEvents.END_DATA_PACK_RELOAD.register((server, resources, success) -> inject(server));
+        NeoEvents.serverStarted(ObolRecipe::inject);
+        NeoEvents.afterReload(ObolRecipe::inject);
     }
 
     /**
@@ -106,7 +106,6 @@ public final class ObolRecipe {
                         com.google.common.collect.Multimap.class, java.util.Map.class);
                 ctor.setAccessible(true);
                 RecipeMap merged = (RecipeMap) ctor.newInstance(byType, byKey);
-                carryFabricSyncIndex(current, merged, List.of(fruitHolder));
                 recipesField.set(manager, merged);
                 manager.finalizeRecipeLoading(server.getWorldData().enabledFeatures());
             }
@@ -115,48 +114,4 @@ public final class ObolRecipe {
         }
     }
 
-    /**
-     * Fabric API's recipe-sync mixin hides a serializer index inside every
-     * RecipeMap and fills it only in RecipeMap.create — which the injection
-     * above bypasses. Left null, it kills every Fabric-API client at the
-     * door the moment any mod registers a synced serializer ("Couldn't
-     * place player in world"). So the old map's index is carried over,
-     * extended with the injected recipes, and always set NON-NULL. Absent
-     * field (no recipe-sync module in this Fabric API) = nothing to do.
-     */
-    private static void carryFabricSyncIndex(RecipeMap old, RecipeMap merged,
-            List<RecipeHolder<?>> added) {
-        try {
-            Field syncField = null;
-            for (Field f : RecipeMap.class.getDeclaredFields()) {
-                if (java.util.Map.class.isAssignableFrom(f.getType())
-                        && f.getName().toLowerCase(java.util.Locale.ROOT)
-                                .contains("syncedserializer")) {
-                    syncField = f;
-                    break;
-                }
-            }
-            if (syncField == null) return; // no Fabric recipe-sync here
-            syncField.setAccessible(true);
-            java.util.Map<Object, Object> copy = new java.util.IdentityHashMap<>();
-            if (syncField.get(old) instanceof java.util.Map<?, ?> oldIndex) {
-                for (var e : oldIndex.entrySet()) {
-                    copy.put(e.getKey(),
-                            new java.util.ArrayList<>((java.util.Collection<?>) e.getValue()));
-                }
-            }
-            for (RecipeHolder<?> h : added) {
-                if (copy.get(h.value().getSerializer())
-                        instanceof java.util.List<?> bucket) {
-                    @SuppressWarnings("unchecked")
-                    var list = (java.util.List<Object>) bucket;
-                    list.add(h);
-                }
-            }
-            syncField.set(merged, copy);
-        } catch (Exception e) {
-            System.out.println("[CharonsEcho] fabric recipe-sync carry-over failed"
-                    + " (recipes still work; synced views may miss the obol): " + e);
-        }
-    }
 }

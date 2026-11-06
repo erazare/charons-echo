@@ -1,10 +1,9 @@
 package com.charonsecho.npc;
 
+import com.charonsecho.platform.NeoEvents;
 import com.charonsecho.CharonsEcho;
 import com.charonsecho.graveyard.Church;
 
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
-import net.fabricmc.fabric.api.event.player.UseEntityCallback;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -37,7 +36,7 @@ public final class Scrivener {
     private Scrivener() {}
 
     public static void register() {
-        UseEntityCallback.EVENT.register((player, world, hand, entity, hit) -> {
+        NeoEvents.useEntity((player, world, entity) -> {
             if (!(entity instanceof ZombieVillager)
                     || world.dimension() != CharonsEcho.GRAVEYARD_DIM) {
                 return InteractionResult.PASS;
@@ -47,7 +46,7 @@ public final class Scrivener {
             return InteractionResult.SUCCESS;
         });
         // Same async-entity doctrine as the Broker: ensure late, repeat, de-dupe.
-        ServerTickEvents.END_SERVER_TICK.register(server -> {
+        NeoEvents.serverTick(server -> {
             if (server.getTickCount() < 120) return;
             if (server.getTickCount() % 600 != 0) return;
             ensure(server);

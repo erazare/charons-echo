@@ -1,5 +1,6 @@
 package com.charonsecho.orchard;
 
+import com.charonsecho.platform.NeoEvents;
 import com.charonsecho.CharonConfig;
 import com.charonsecho.CharonsEcho;
 import com.charonsecho.CharonStorage;
@@ -18,10 +19,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
-import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
-import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
-import net.fabricmc.fabric.api.event.player.UseBlockCallback;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -134,11 +131,11 @@ public final class Orchard {
     // ---------------------------------------------------------------- setup
 
     public static void register() {
-        UseBlockCallback.EVENT.register(Orchard::onUseBlock);
-        PlayerBlockBreakEvents.BEFORE.register(Orchard::onBreak);
-        ServerTickEvents.END_SERVER_TICK.register(Orchard::tick);
-        ServerPlayConnectionEvents.DISCONNECT.register((handler, server) ->
-                DANCE_LAST.remove(handler.getPlayer().getUUID()));
+        NeoEvents.useBlock(Orchard::onUseBlock);
+        NeoEvents.beforeBreak(Orchard::onBreak);
+        NeoEvents.serverTick(Orchard::tick);
+        NeoEvents.playerQuit(player ->
+                DANCE_LAST.remove(player.getUUID()));
     }
 
     /** The big tree with the most chains is the elder; the other is common. */
@@ -705,7 +702,7 @@ public final class Orchard {
     }
 
     private static boolean onBreak(Level world, net.minecraft.world.entity.player.Player player,
-            BlockPos pos, BlockState state, net.minecraft.world.level.block.entity.BlockEntity be) {
+            BlockPos pos, BlockState state) {
         if (!(player instanceof ServerPlayer sp)) return true;
         ServerLevel level = (ServerLevel) world;
         for (Tree tree : TREES) {

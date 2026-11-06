@@ -1,5 +1,6 @@
 package com.charonsecho.npc;
 
+import com.charonsecho.platform.NeoEvents;
 import com.charonsecho.CharonConfig;
 import com.charonsecho.CharonStorage;
 import com.charonsecho.CharonsEcho;
@@ -13,13 +14,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-import eu.pb4.sgui.api.elements.GuiElementBuilder;
-import eu.pb4.sgui.api.gui.SimpleGui;
+import com.charonsecho.gui.MenuItem;
+import com.charonsecho.gui.ChestGui;
 
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
-import net.fabricmc.fabric.api.event.player.AttackEntityCallback;
-import net.fabricmc.fabric.api.event.player.UseBlockCallback;
-import net.fabricmc.fabric.api.event.player.UseEntityCallback;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -39,7 +36,6 @@ import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.decoration.ItemFrame;
-import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.ChunkPos;
@@ -95,7 +91,7 @@ public final class Vault {
         // Posting the Keeper: a SNEAKING gamemaster touches gilded blackstone
         // with an obol. (An upright obol-touch is a Soul Gate consecration —
         // the crouch is what separates an altar from a door.)
-        UseBlockCallback.EVENT.register((player, world, hand, hit) -> {
+        NeoEvents.useBlock((player, world, hand, hit) -> {
             if (!(player instanceof ServerPlayer sp) || !(world instanceof ServerLevel level)) {
                 return InteractionResult.PASS;
             }
@@ -123,7 +119,7 @@ public final class Vault {
 
         // Any evoker in the land of the dead IS the Keeper (Broker doctrine:
         // no natural spawns, no ambiguity, stale clones answer correctly).
-        UseEntityCallback.EVENT.register((player, world, hand, entity, hit) -> {
+        NeoEvents.useEntity((player, world, entity) -> {
             if (world.dimension() != CharonsEcho.GRAVEYARD_DIM) return InteractionResult.PASS;
             if (entity instanceof ItemFrame frame && frame.entityTags().contains(TAG)) {
                 // The trophies are Charon's until ransomed — nobody fiddles
@@ -138,16 +134,17 @@ public final class Vault {
             }
             return InteractionResult.PASS;
         });
-        AttackEntityCallback.EVENT.register((player, world, hand, entity, hit) -> {
-            if (world.dimension() != CharonsEcho.GRAVEYARD_DIM) return InteractionResult.PASS;
+        NeoEvents.attackEntity(event -> {
+            var player = event.getEntity();
+            if (player.level().dimension() != CharonsEcho.GRAVEYARD_DIM) return;
+            var entity = event.getTarget();
             if (entity instanceof ItemFrame frame && frame.entityTags().contains(TAG)
                     && !(player instanceof ServerPlayer sp && GraveyardRules.isGamemaster(sp))) {
-                return InteractionResult.FAIL;
+                event.setCanceled(true);
             }
-            return InteractionResult.PASS;
         });
 
-        ServerTickEvents.END_SERVER_TICK.register(srv -> {
+        NeoEvents.serverTick(srv -> {
             if (srv.getTickCount() < 100) return;
             // Forfeiture is a slow clock — one sweep a minute is generous.
             if (srv.getTickCount() % 1200 == 0) expireSweep(srv);
@@ -354,10 +351,10 @@ public final class Vault {
     // ---------------------------------------------------------------- the ransom
 
     private static void openVault(ServerPlayer viewer) {
-        SimpleGui gui = new SimpleGui(MenuType.GENERIC_9x6, viewer, false);
+        ChestGui gui = new ChestGui(viewer, 6);
         gui.setTitle(Component.literal("Charon's Vault"));
         if (ENTRIES.isEmpty()) {
-            gui.setSlot(22, new GuiElementBuilder(Items.GLASS_BOTTLE)
+            gui.setSlot(22, new MenuItem(Items.GLASS_BOTTLE)
                     .setName(Component.literal("The Vault stands empty.")
                             .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC)));
         }
@@ -367,7 +364,7 @@ public final class Vault {
             boolean mine = e.owner.equals(viewer.getUUID());
             long daysLeft = CharonConfig.vaultExpiryDays
                     - (System.currentTimeMillis() - e.epochMillis) / 86_400_000L;
-            GuiElementBuilder b = GuiElementBuilder.from(e.item.copy())
+            MenuItem b = MenuItem.from(e.item.copy())
                     .addLoreLine(Component.empty())
                     .addLoreLine(Component.literal("Taken from " + e.ownerName + ", " + date(e.epochMillis))
                             .withStyle(ChatFormatting.GRAY))
@@ -380,7 +377,7 @@ public final class Vault {
                         .withStyle(ChatFormatting.DARK_AQUA))
                         .addLoreLine(Component.literal("Click to bargain.").withStyle(ChatFormatting.GRAY))
                         .glow()
-                        .setCallback((i, t, a, g) -> {
+                        .setCallback(g -> {
                             g.close();
                             openRansom(viewer, e);
                         });
@@ -394,13 +391,13 @@ public final class Vault {
     }
 
     private static void openRansom(ServerPlayer player, Entry e) {
-        SimpleGui gui = new SimpleGui(MenuType.GENERIC_9x3, player, false);
+        ChestGui gui = new ChestGui(player, 3);
         gui.setTitle(Component.literal("The Keeper names his price"));
-        gui.setSlot(4, GuiElementBuilder.from(e.item.copy()));
-        gui.setSlot(11, new GuiElementBuilder(Items.ECHO_SHARD)
+        gui.setSlot(4, MenuItem.from(e.item.copy()));
+        gui.setSlot(11, new MenuItem(Items.ECHO_SHARD)
                 .setName(Component.literal("Pay " + CharonConfig.vaultRansomObols + " obols")
                         .withStyle(ChatFormatting.DARK_AQUA))
-                .setCallback((i, t, a, g) -> {
+                .setCallback(g -> {
                     if (!consumeObols(player, CharonConfig.vaultRansomObols)) {
                         player.sendSystemMessage(Component.literal("The Keeper counts your coins and sneers.")
                                 .withStyle(ChatFormatting.RED));
@@ -409,10 +406,10 @@ public final class Vault {
                     g.close();
                     release(player, e);
                 }));
-        gui.setSlot(15, new GuiElementBuilder(Items.EXPERIENCE_BOTTLE)
+        gui.setSlot(15, new MenuItem(Items.EXPERIENCE_BOTTLE)
                 .setName(Component.literal("Pay " + CharonConfig.vaultRansomLevels + " levels")
                         .withStyle(ChatFormatting.GREEN))
-                .setCallback((i, t, a, g) -> {
+                .setCallback(g -> {
                     if (player.experienceLevel < CharonConfig.vaultRansomLevels) {
                         player.sendSystemMessage(Component.literal("You have not lived enough to pay it.")
                                 .withStyle(ChatFormatting.RED));

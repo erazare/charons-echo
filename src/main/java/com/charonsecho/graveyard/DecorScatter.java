@@ -1,5 +1,6 @@
 package com.charonsecho.graveyard;
 
+import com.charonsecho.platform.NeoEvents;
 import com.charonsecho.CharonsEcho;
 import com.charonsecho.CharonStorage;
 import com.charonsecho.orchard.Orchard;
@@ -17,9 +18,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerChunkEvents;
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
@@ -68,7 +66,7 @@ public final class DecorScatter {
     private DecorScatter() {}
 
     public static void register() {
-        ServerLifecycleEvents.SERVER_STARTING.register(server -> {
+        NeoEvents.serverStarting(server -> {
             PENDING.clear();
             QUEUED.clear();
             currentKey = null;
@@ -76,14 +74,14 @@ public final class DecorScatter {
             currentSlot = 0;
             dirty = false;
         });
-        ServerChunkEvents.CHUNK_LOAD.register((level, chunk, newlyGenerated) -> {
+        NeoEvents.chunkLoad((level, chunk) -> {
             if (level.dimension() != CharonsEcho.GRAVEYARD_DIM) return;
             long key = chunk.getPos().pack();
             if (!DECORATED.contains(key) && QUEUED.add(key)) {
                 PENDING.addLast(key); // decorate on a later tick — never during load
             }
         });
-        ServerTickEvents.END_SERVER_TICK.register(DecorScatter::tick);
+        NeoEvents.serverTick(DecorScatter::tick);
     }
 
     private static void tick(MinecraftServer server) {

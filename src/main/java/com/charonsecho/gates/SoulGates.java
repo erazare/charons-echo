@@ -1,5 +1,6 @@
 package com.charonsecho.gates;
 
+import com.charonsecho.platform.NeoEvents;
 import com.charonsecho.CharonConfig;
 import com.charonsecho.CharonsEcho;
 import com.charonsecho.CharonStorage;
@@ -21,9 +22,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
-import net.fabricmc.fabric.api.event.player.UseBlockCallback;
-import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleTypes;
@@ -137,7 +135,7 @@ public final class SoulGates {
     private SoulGates() {}
 
     public static void register() {
-        UseBlockCallback.EVENT.register((player, world, hand, hit) -> {
+        NeoEvents.useBlock((player, world, hand, hit) -> {
             if (!(player instanceof ServerPlayer sp)) return InteractionResult.SUCCESS;
             if (!(world instanceof ServerLevel level)) return InteractionResult.PASS;
             if (!world.getBlockState(hit.getBlockPos()).is(Blocks.GILDED_BLACKSTONE)) {
@@ -148,9 +146,9 @@ public final class SoulGates {
             if (sp.isShiftKeyDown()) return InteractionResult.PASS;
             return consecrate(sp, level, hit.getBlockPos(), hand);
         });
-        ServerTickEvents.END_SERVER_TICK.register(SoulGates::tick);
-        ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
-            UUID id = handler.getPlayer().getUUID();
+        NeoEvents.serverTick(SoulGates::tick);
+        NeoEvents.playerQuit(player -> {
+            UUID id = player.getUUID();
             LAST_GATE.remove(id);
             DISARMED.remove(id);
         });

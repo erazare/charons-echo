@@ -1,5 +1,6 @@
 package com.charonsecho;
 
+import com.charonsecho.platform.NeoEvents;
 import com.charonsecho.death.DeathHandler;
 import com.charonsecho.death.DeathWake;
 import com.charonsecho.death.GhostState;
@@ -22,18 +23,17 @@ import com.charonsecho.studio.StudioMode;
 import com.charonsecho.studio.StudioSets;
 import com.charonsecho.war.War;
 
-import net.fabricmc.api.ModInitializer;
-import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
-import net.minecraft.core.Registry;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
+import net.neoforged.bus.api.IEventBus;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.neoforge.registries.RegisterEvent;
 
-public final class CharonsEcho implements ModInitializer {
+@Mod(CharonsEcho.MOD_ID)
+public final class CharonsEcho {
 
     public static final String MOD_ID = "charons_echo";
 
@@ -45,16 +45,15 @@ public final class CharonsEcho implements ModInitializer {
     public static final ResourceKey<Level> STUDIO_DIM = ResourceKey.create(
             Registries.DIMENSION, Identifier.fromNamespaceAndPath(MOD_ID, "studio"));
 
-    @Override
-    public void onInitialize() {
+    public CharonsEcho(IEventBus modBus) {
         // Live settings (config/charons-echo.properties).
         CharonConfig.load();
 
         // Real chunk generator — terrain is built at the noise stage so vanilla
         // computes lighting/heightmaps normally (see GraveyardChunkGenerator).
-        Registry.register(BuiltInRegistries.CHUNK_GENERATOR,
+        modBus.addListener((RegisterEvent event) -> event.register(Registries.CHUNK_GENERATOR,
                 Identifier.fromNamespaceAndPath(MOD_ID, "graveyard"),
-                GraveyardChunkGenerator.CODEC);
+                () -> GraveyardChunkGenerator.CODEC));
 
         // The death loop: Charon takes the goods, the player rises as a ghost.
         GraveManager.register();
@@ -85,7 +84,7 @@ public final class CharonsEcho implements ModInitializer {
         // Charon's Vault: payment in kind, the trophy wall, and the Keeper.
         com.charonsecho.npc.Vault.register();
 
-        ServerLifecycleEvents.SERVER_STARTED.register(server -> {
+        NeoEvents.serverStarted(server -> {
             GraveyardTerrain.setSeed(server.overworld().getSeed());
             GraveManager.load(server);
             GraveyardPlots.load(server); // after graves: legacy-field migration reads them
@@ -112,7 +111,7 @@ public final class CharonsEcho implements ModInitializer {
                 StudioMode.restorePlots(studio); // empty plots regrow their builds
             }
         });
-        ServerLifecycleEvents.SERVER_STOPPING.register(server -> {
+        NeoEvents.serverStopping(server -> {
             GraveManager.flush();
             GhostState.save();
             DecorScatter.flush();
@@ -121,7 +120,6 @@ public final class CharonsEcho implements ModInitializer {
             CharonStorage.flush();
         });
 
-        CommandRegistrationCallback.EVENT.register((dispatcher, access, env) ->
-                CharonCommands.register(dispatcher));
+        NeoEvents.registerCommands(CharonCommands::register);
     }
 }

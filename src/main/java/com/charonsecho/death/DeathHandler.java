@@ -1,5 +1,6 @@
 package com.charonsecho.death;
 
+import com.charonsecho.platform.NeoEvents;
 import com.charonsecho.CharonsEcho;
 import com.charonsecho.item.CharonObol;
 
@@ -7,7 +8,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
@@ -34,7 +34,7 @@ public final class DeathHandler {
     private DeathHandler() {}
 
     public static void register() {
-        ServerLivingEntityEvents.ALLOW_DEATH.register((entity, source, amount) -> {
+        NeoEvents.allowDeath((entity, source) -> {
             if (!(entity instanceof ServerPlayer player)) return true;
             ServerLevel level = (ServerLevel) player.level();
 
