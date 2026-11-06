@@ -10,6 +10,7 @@ displayName = "Charon's Echo"
 displayURL = "https://github.com/erazare/charons-echo"
 logoFile = "assets/charons_echo/icon.png"
 authors = "BeachFury"
+credits = "NeoForge 26.3 port by Codex, audited and packaged by Runa for erazare."
 description = """Death, reimagined: graves, ghosts, and a graveyard dimension. Your items go to a headstone in Charon's dusk-lit world of the dead — cross the portal as a ghost and settle with the Ferryman: pay the fare, pay the XP toll, or enlist in the war of the dead and earn your resurrection. Every death digs a grave with your epitaph; write your death story, lay flowers for the fallen, and walk a crypt that grows a hall for every month of your server's history. Corpse recovery with a mythology. Server-side, crossplay-ready (Geyser/Bedrock), no client mod required."""
 
 [[dependencies.charons_echo]]

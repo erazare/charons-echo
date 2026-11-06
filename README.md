@@ -1,3 +1,8 @@
+> **NeoForge 26.3 port — unofficial.** Charon's Echo is by **BeachFury**,
+> MIT-licensed; `master` in this fork is his original Fabric source,
+> untouched. This branch ports his 1.3.2 to NeoForge. Provenance and
+> port credits: [PORTING.md](PORTING.md).
+
 # Charon's Echo
 
 **Death, reimagined.** When you die, your items don't scatter — Charon takes them.
