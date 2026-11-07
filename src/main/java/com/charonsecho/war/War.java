@@ -237,7 +237,15 @@ public final class War {
             if (p.level() != graveyard) continue; // the clock runs only at the war
             en.remainingTicks -= 20;
             if (en.remainingTicks <= 0) {
-                serveOut(p);
+                // One soldier's bad state must never take the server down:
+                // serveOut runs a full resurrection, and a throw here used to
+                // propagate out of the server tick and crash the world.
+                try {
+                    serveOut(p);
+                } catch (RuntimeException e) {
+                    System.out.println("[CharonsEcho] serveOut failed for "
+                            + p.getScoreboardName() + ": " + e);
+                }
                 continue;
             }
             if (p.tickCount % 60 < 20) {
