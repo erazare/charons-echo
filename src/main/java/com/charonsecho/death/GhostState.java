@@ -133,8 +133,18 @@ public final class GhostState {
         player.onUpdateAbilities();
         Scoreboard sb = player.level().getServer().getScoreboard();
         PlayerTeam team = sb.getPlayerTeam(TEAM_NAME);
-        if (team != null) {
-            sb.removePlayerFromTeam(player.getScoreboardName(), team);
+        // Membership-guarded: an enlisted soldier sits on a war faction team,
+        // not this one (a player holds exactly one team), and leaveTeams has
+        // already struck her from that. removePlayerFromTeam throws when the
+        // player is not on the named team — which used to abort resurrection
+        // halfway (grave claimed, no portal home) and, on the war's tick,
+        // take the whole server down. Cleanup must never throw.
+        if (team != null && team.getPlayers().contains(player.getScoreboardName())) {
+            try {
+                sb.removePlayerFromTeam(player.getScoreboardName(), team);
+            } catch (IllegalStateException ignored) {
+                // Not on the team after all — nothing to remove.
+            }
         }
         save();
     }
